@@ -80,6 +80,21 @@ together with the game. Choose your tracker as **Input** and usually **freetrack
 
 The first start of each game takes a little longer because a start script is created for it.
 
+In Game Mode you usually only see the game, the opentrack window can be hidden behind it.
+That's why the first setup is easier in Desktop Mode.
+
+### opentrack doesn't start sometimes
+
+Very rarely opentrack crashes right at startup (we saw it once in testing). Usually it's enough to just
+**quit the game and start it again**.
+
+If it keeps happening, change the launch option of that game to this. It turns off Proton's gamepad
+helper "Xalia", which was involved in the crash:
+
+```
+PROTON_USE_XALIA=0 ~/.local/bin/opentrack-launcher %command%
+```
+
 ### Updating / when something breaks
 
 Just run the command from step 3 again. It deletes everything and installs fresh. opentrack also updates
@@ -197,6 +212,21 @@ meistens **freetrack 2.0 Enhanced**, dann auf **Start** klicken. opentrack merkt
 für jedes Spiel einzeln.
 
 Der erste Start eines Spiels dauert etwas länger, weil dafür ein Startskript angelegt wird.
+
+Im Spielmodus siehst du meistens nur das Spiel, das opentrack-Fenster kann dahinter versteckt sein.
+Deshalb ist das erste Einrichten im Desktop-Modus einfacher.
+
+### opentrack startet manchmal nicht
+
+Sehr selten stürzt opentrack direkt beim Start ab (beim Testen einmal passiert). Meistens reicht es,
+**das Spiel zu beenden und einfach nochmal zu starten**.
+
+Passiert das öfter, die Startoption des Spiels auf das hier ändern. Damit wird Protons Controller-Helfer
+„Xalia“ abgeschaltet, der an dem Absturz beteiligt war:
+
+```
+PROTON_USE_XALIA=0 ~/.local/bin/opentrack-launcher %command%
+```
 
 ### Aktualisieren / wenn etwas kaputt ist
 
