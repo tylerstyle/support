@@ -72,16 +72,28 @@ For **every game** you want head tracking in:
 3. Under **Compatibility**, make sure the game runs with **Proton** (opentrack only works with the Windows
    version of a game).
 
-### 6. First start
+### 6. Set up opentrack (once per game)
 
-Start the game (in Desktop Mode the first time, that makes setup easier). The opentrack window opens
-together with the game. Choose your tracker as **Input** and usually **freetrack 2.0 Enhanced** as
-**Output**, then press **Start**. opentrack remembers the settings separately for each game.
+While a game is running, the game takes all clicks, so you **can't** set up opentrack next to the game.
+Do it beforehand, with the game closed:
 
-The first start of each game takes a little longer because a start script is created for it.
+1. In Desktop Mode, double-click **opentrack Setup** on the desktop (it's also in the app menu under Games).
+2. Pick the game. A short reminder of the following steps appears, click **OK** and opentrack opens.
+3. Under **Input** choose your tracker, under **Output** usually **freetrack 2.0 Enhanced**.
+4. Click **Options** → tab **Game detection** → tick *Start profiles from game executable names in this
+   list* → click **+** → enter the game's `.exe` name (opentrack Setup tells you which) and pick your
+   profile. This makes tracking **start by itself** whenever the game runs.
+5. Press **Start** to test it, then close opentrack.
 
-In Game Mode you usually only see the game, the opentrack window can be hidden behind it.
-That's why the first setup is easier in Desktop Mode.
+If the game is missing in the list, start it once from Steam, quit it, and open opentrack Setup again.
+
+Now just play: opentrack starts together with the game (in Game Mode it stays hidden behind the game)
+and begins tracking on its own. The first start of each game takes a little longer because a start
+script is created for it.
+
+> **Don't touch the opentrack window with the touchscreen!** opentrack closes immediately when you tap it
+> (a bug in Proton, it doesn't support touch input for opentrack). Use the **trackpad** (R2 = click) or a
+> mouse. If it happened, just start opentrack Setup (or the game) again.
 
 ### opentrack doesn't start sometimes
 
@@ -106,13 +118,15 @@ itself automatically when a game starts, and the `icuuc.dll` fix is applied agai
 |---|---|
 | `~/.local/bin/opentrack-launcher` | the old launcher script |
 | `~/.local/share/opentrack-launcher/` | downloaded opentrack, per-game start scripts, manually added DLLs |
+| `~/.local/bin/opentrack-setup`, `~/Desktop/opentrack-setup.desktop`, `~/.local/share/applications/opentrack-setup.desktop` | opentrack Setup |
 
 Your opentrack settings live inside each game's Proton prefix and are **not** deleted.
 
 If you want to do it by hand instead:
 
 ```bash
-rm -f ~/.local/bin/opentrack-launcher
+rm -f ~/.local/bin/opentrack-launcher ~/.local/bin/opentrack-setup
+rm -f ~/Desktop/opentrack-setup.desktop ~/.local/share/applications/opentrack-setup.desktop
 rm -rf ~/.local/share/opentrack-launcher
 ```
 
@@ -136,7 +150,9 @@ An `icuuc.dll` you may have copied into a game's Proton prefix by hand can stay.
    - puts `icuuc.dll` next to `opentrack.exe` after every install/update (matching 32/64 bit),
    - uses the bundled 7-Zip if needed,
    - no longer crashes (and stops the game from starting) when GitHub can't be reached.
-5. Downloads the latest opentrack and checks that `icuuc.dll` is in place.
+5. Installs **opentrack Setup** (desktop icon + app menu). It opens opentrack without the game, in that
+   game's Proton prefix (where opentrack keeps its settings), using the same Proton the game last ran with.
+6. Downloads the latest opentrack and checks that `icuuc.dll` is in place.
 
 ---
 
@@ -204,17 +220,31 @@ Für **jedes Spiel**, in dem du Headtracking willst:
 3. Unter **Kompatibilität** sicherstellen, dass das Spiel mit **Proton** läuft (opentrack funktioniert nur
    mit der Windows-Version eines Spiels).
 
-### 6. Erster Start
+### 6. opentrack einrichten (einmal pro Spiel)
 
-Das Spiel starten (beim ersten Mal am besten im Desktop-Modus, dann ist das Einrichten einfacher).
-Das opentrack-Fenster geht zusammen mit dem Spiel auf. Bei **Input** deinen Tracker wählen, bei **Output**
-meistens **freetrack 2.0 Enhanced**, dann auf **Start** klicken. opentrack merkt sich die Einstellungen
-für jedes Spiel einzeln.
+Solange ein Spiel läuft, schnappt sich das Spiel alle Klicks, du kannst opentrack also **nicht** neben dem
+Spiel einrichten. Das passiert vorher, bei geschlossenem Spiel:
 
-Der erste Start eines Spiels dauert etwas länger, weil dafür ein Startskript angelegt wird.
+1. Im Desktop-Modus auf dem Desktop doppelt auf **opentrack Setup** klicken (steht auch im Startmenü unter
+   Spiele).
+2. Das Spiel auswählen. Es erscheint eine kurze Erinnerung an die folgenden Schritte, mit **OK**
+   bestätigen, dann öffnet sich opentrack.
+3. Bei **Input** deinen Tracker wählen, bei **Output** meistens **freetrack 2.0 Enhanced**.
+4. Auf **Options** klicken → Reiter **Game detection** → Haken bei *Start profiles from game executable
+   names in this list* → auf **+** klicken → den `.exe`-Namen des Spiels eintragen (opentrack Setup sagt
+   dir welchen) und dein Profil wählen. Dadurch **startet das Tracking von selbst**, sobald das Spiel läuft.
+5. Mit **Start** testen, danach opentrack schließen.
 
-Im Spielmodus siehst du meistens nur das Spiel, das opentrack-Fenster kann dahinter versteckt sein.
-Deshalb ist das erste Einrichten im Desktop-Modus einfacher.
+Fehlt das Spiel in der Liste, starte es einmal über Steam, beende es und öffne opentrack Setup nochmal.
+
+Jetzt einfach spielen: opentrack startet zusammen mit dem Spiel (im Spielmodus bleibt es hinter dem Spiel
+versteckt) und beginnt von selbst mit dem Tracking. Der erste Start eines Spiels dauert etwas länger, weil
+dafür ein Startskript angelegt wird.
+
+> **Das opentrack-Fenster nicht mit dem Touchscreen antippen!** opentrack schließt sich sofort, wenn man
+> darauf tippt (ein Fehler in Proton, das Touch-Eingaben für opentrack nicht unterstützt). Das **Trackpad**
+> benutzen (R2 = Klick) oder eine Maus. Ist es passiert, opentrack Setup (oder das Spiel) einfach nochmal
+> starten.
 
 ### opentrack startet manchmal nicht
 
@@ -240,13 +270,15 @@ Update wieder eingespielt.
 |---|---|
 | `~/.local/bin/opentrack-launcher` | das alte Launcher-Skript |
 | `~/.local/share/opentrack-launcher/` | heruntergeladenes opentrack, Startskripte pro Spiel, von Hand hinzugefügte DLLs |
+| `~/.local/bin/opentrack-setup`, `~/Desktop/opentrack-setup.desktop`, `~/.local/share/applications/opentrack-setup.desktop` | opentrack Setup |
 
 Deine opentrack-Einstellungen liegen im Proton-Prefix des jeweiligen Spiels und werden **nicht** gelöscht.
 
 Falls du es lieber von Hand machen willst:
 
 ```bash
-rm -f ~/.local/bin/opentrack-launcher
+rm -f ~/.local/bin/opentrack-launcher ~/.local/bin/opentrack-setup
+rm -f ~/Desktop/opentrack-setup.desktop ~/.local/share/applications/opentrack-setup.desktop
 rm -rf ~/.local/share/opentrack-launcher
 ```
 
@@ -272,4 +304,7 @@ Sie schadet nicht.
    - nach jeder Installation/jedem Update `icuuc.dll` neben `opentrack.exe` legt (passend für 32/64 Bit),
    - bei Bedarf das mitgelieferte 7-Zip benutzt,
    - nicht mehr abstürzt (und damit den Spielstart verhindert), wenn GitHub nicht erreichbar ist.
-5. Lädt das neueste opentrack herunter und prüft, ob `icuuc.dll` an ihrem Platz ist.
+5. Installiert **opentrack Setup** (Desktop-Symbol + Startmenü). Es öffnet opentrack ohne das Spiel im
+   Proton-Prefix des Spiels (dort speichert opentrack seine Einstellungen), mit dem Proton, mit dem das
+   Spiel zuletzt lief.
+6. Lädt das neueste opentrack herunter und prüft, ob `icuuc.dll` an ihrem Platz ist.

@@ -37,6 +37,9 @@ SEVENZIP_SHA256="4ca3b7c6f2f67866b92622818b58233dc70367be2f36b498eb0bdeaaa44b53f
 
 LAUNCHER_HOME="$HOME/.local/share/opentrack-launcher"
 LAUNCHER_BIN="$HOME/.local/bin/opentrack-launcher"
+SETUP_BIN="$HOME/.local/bin/opentrack-setup"
+SETUP_DESKTOP="$HOME/.local/share/applications/opentrack-setup.desktop"
+SETUP_DESKTOP_ICON="$HOME/Desktop/opentrack-setup.desktop"
 
 if [ -t 1 ]; then
     BOLD=$'\e[1m'; RED=$'\e[31m'; GREEN=$'\e[32m'; YELLOW=$'\e[33m'; RESET=$'\e[0m'
@@ -106,7 +109,7 @@ trap 'rm -rf "$TMP"' EXIT
 step "Looking for old installs"
 
 OLD=()
-for p in "$LAUNCHER_HOME" "$LAUNCHER_BIN"; do
+for p in "$LAUNCHER_HOME" "$LAUNCHER_BIN" "$SETUP_BIN" "$SETUP_DESKTOP" "$SETUP_DESKTOP_ICON"; do
     [ -e "$p" ] && OLD+=("$p")
 done
 if [ "${#OLD[@]}" -eq 0 ]; then
@@ -220,6 +223,175 @@ install -m 755 "$TMP/opentrack-launcher" "$LAUNCHER_BIN"
 ok "installed to $LAUNCHER_BIN"
 
 # --------------------------------------------------------------------------
+step "Installing opentrack Setup"
+
+# While a game runs it captures all clicks, so opentrack can't be configured next to it.
+# opentrack-setup opens opentrack alone, in the chosen game's Proton prefix (where its settings live).
+cat > "$TMP/opentrack-setup" <<'SETUP'
+#!/usr/bin/env python3
+# opentrack Setup: opens opentrack WITHOUT the game, in that game's Proton prefix, so it can
+# be configured (while a game runs, the game captures all clicks).
+# Installed by install-opentrack.sh.
+
+import os
+import re
+import subprocess
+import sys
+from os.path import isdir, isfile, join
+
+HOME = os.environ["HOME"]
+STEAM = join(HOME, ".local/share/Steam")
+LAUNCHERHOME = join(HOME, ".local/share/opentrack-launcher")
+OPENTRACKEXEC = join(LAUNCHERHOME, "install/opentrack.exe")
+LOG = join(LAUNCHERHOME, "setup.log")
+
+def dialog(*args):
+    return subprocess.run(["kdialog", "--title", "opentrack Setup", *args], stdout=subprocess.PIPE, text=True)
+
+def fail(msg):
+    dialog("--error", msg)
+    sys.exit(1)
+
+def vdfvalue(path, key):
+    with open(path, errors="replace") as f:
+        m = re.search(r'"%s"\s+"([^"]*)"' % re.escape(key), f.read())
+    return m.group(1) if m else None
+
+def libraries():
+    with open(join(STEAM, "steamapps/libraryfolders.vdf"), errors="replace") as f:
+        paths = re.findall(r'"path"\s+"([^"]+)"', f.read())
+    return [p.replace("\\\\", "\\") for p in paths] or [STEAM]
+
+def installedapps():
+    # appid -> library, from Steam's own index (manifests elsewhere can be stale leftovers)
+    with open(join(STEAM, "steamapps/libraryfolders.vdf"), errors="replace") as f:
+        text = f.read()
+    paths = list(re.finditer(r'"path"\s+"([^"]+)"', text))
+    apps = {}
+    for i, m in enumerate(paths):
+        end = paths[i + 1].start() if i + 1 < len(paths) else len(text)
+        block = re.search(r'"apps"\s*\{([^}]*)\}', text[m.end():end])
+        if block:
+            for appid in re.findall(r'"(\d+)"\s+"\d+"', block.group(1)):
+                apps.setdefault(appid, m.group(1).replace("\\\\", "\\"))
+    return apps
+
+def findapp(appid):
+    for lib in libraries():
+        acf = join(lib, "steamapps", "appmanifest_%s.acf" % appid)
+        if isfile(acf):
+            return lib, acf
+    return None, None
+
+def gameexe(appid):
+    # the per-game .bat written by opentrack-launcher contains the game's .exe
+    bat = join(LAUNCHERHOME, "scripts", appid + ".bat")
+    if isfile(bat):
+        with open(bat, errors="replace") as f:
+            m = re.search(r'start /wait "" "([^"]+)"', f.read())
+        if m:
+            return m.group(1).split("\\")[-1]
+    return None
+
+def protoncommand(compatdata):
+    # the Proton (and its Steam Linux Runtime) the game last ran with, or None
+    proton = None
+    if isfile(join(compatdata, "config_info")):
+        with open(join(compatdata, "config_info"), errors="replace") as f:
+            for line in f:
+                line = line.strip()
+                if line.endswith("/files/lib/"):
+                    proton = line[:-len("/files/lib/")]
+                    break
+    if proton and not isfile(join(proton, "proton")):
+        # Proton may have been moved to another library since the game last ran
+        moved = [join(lib, "steamapps/common", os.path.basename(proton)) for lib in libraries()]
+        proton = next((p for p in moved if isfile(join(p, "proton"))), None)
+    if not proton:
+        return None
+    cmd = [join(proton, "proton"), "waitforexitandrun", OPENTRACKEXEC]
+    manifest = join(proton, "toolmanifest.vdf")
+    runtimeid = vdfvalue(manifest, "require_tool_appid") if isfile(manifest) else None
+    if runtimeid:
+        lib, acf = findapp(runtimeid)
+        entry = acf and join(lib, "steamapps/common", vdfvalue(acf, "installdir") or "", "_v2-entry-point")
+        if not entry or not isfile(entry):
+            return None
+        cmd = [entry, "--verb=waitforexitandrun", "--"] + cmd
+    return cmd
+
+def games():
+    found = []
+    libs = libraries()
+    for appid, lib in installedapps().items():
+        acf = join(lib, "steamapps", "appmanifest_%s.acf" % appid)
+        name = isfile(acf) and vdfvalue(acf, "name")
+        if not name or name.startswith(("Proton", "Steam Linux Runtime")):
+            continue
+        # the prefix is usually next to the game, but can be in another library (e.g. internal storage)
+        for prefixlib in [lib] + [l for l in libs if l != lib]:
+            compatdata = join(prefixlib, "steamapps/compatdata", appid)
+            if isdir(join(compatdata, "pfx")):
+                cmd = protoncommand(compatdata)
+                if cmd:
+                    found.append((appid, name, compatdata, cmd))
+                break
+    # games already started with opentrack-launcher first
+    return sorted(found, key=lambda g: (gameexe(g[0]) is None, g[1].lower()))
+
+if __name__ == "__main__":
+    if not isfile(OPENTRACKEXEC):
+        fail("opentrack is not installed. Run install-opentrack.sh again.")
+    found = games()
+    if not found:
+        fail("No game found that ran with Proton.\nStart the game once from Steam, quit it and try again.")
+    menu = []
+    for appid, name, _, _ in found:
+        menu += [appid, name + ("   (opentrack launch option set)" if gameexe(appid) else "")]
+    choice = dialog("--menu", "Which game do you want to set up opentrack for?\n"
+                    "(Game missing? Start it once from Steam, quit it and open opentrack Setup again.)", *menu)
+    if choice.returncode != 0:
+        sys.exit(0)
+    appid = choice.stdout.strip()
+    name, compatdata, cmd = next((n, c, x) for a, n, c, x in found if a == appid)
+    if subprocess.run(["pgrep", "-f", "AppId=%s( |$)" % appid], stdout=subprocess.DEVNULL).returncode == 0:
+        fail(name + " is running. Quit the game first, then start opentrack Setup again.")
+    exe = gameexe(appid) or "the game's .exe"
+    dialog("--msgbox",
+        "opentrack opens now for %s, WITHOUT the game.\n\n"
+        "Use the trackpad or a mouse, NOT the touchscreen (it makes opentrack close).\n\n"
+        "1. Choose your tracker under Input and usually 'freetrack 2.0 Enhanced' under Output.\n"
+        "2. Options > Game detection: tick 'Start profiles from game executable names in this list',\n"
+        "    click +, enter %s and pick your profile.\n"
+        "    Then tracking starts by itself whenever the game runs.\n"
+        "3. Press Start to test it, then close opentrack. Done!" % (name, exe))
+    env = dict(os.environ, STEAM_COMPAT_CLIENT_INSTALL_PATH=STEAM, STEAM_COMPAT_DATA_PATH=compatdata,
+               SteamAppId=appid, SteamGameId=appid)
+    with open(LOG, "w") as log:
+        subprocess.run(cmd, env=env, stdout=log, stderr=subprocess.STDOUT)
+SETUP
+install -m 755 "$TMP/opentrack-setup" "$SETUP_BIN"
+
+mkdir -p "$(dirname "$SETUP_DESKTOP")"
+cat > "$SETUP_DESKTOP" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=opentrack Setup
+Comment=Set up opentrack for a game (opens opentrack without the game)
+Exec=$SETUP_BIN
+Icon=input-gaming
+Terminal=false
+Categories=Game;
+DESKTOP
+chmod +x "$SETUP_DESKTOP"
+if [ -d "$HOME/Desktop" ]; then
+    cp "$SETUP_DESKTOP" "$SETUP_DESKTOP_ICON"
+    ok "installed 'opentrack Setup' (desktop icon and app menu)"
+else
+    ok "installed 'opentrack Setup' (app menu)"
+fi
+
+# --------------------------------------------------------------------------
 step "Downloading latest opentrack"
 
 # Use the launcher's own code so the result is exactly what it expects at game start.
@@ -276,7 +448,9 @@ echo "       ${BOLD}$LAUNCHER_BIN %command%${RESET}"
 echo
 echo "  3. The game has to run with Proton (Properties -> Compatibility)."
 echo
-echo "The opentrack window opens together with the game. Set up your tracker and"
-echo "output (usually 'freetrack 2.0 Enhanced') there the first time, ideally in Desktop Mode."
+echo "Then set opentrack up ONCE per game, in Desktop Mode, with the game closed:"
+echo "  double-click ${BOLD}opentrack Setup${RESET} on the desktop (or find it in the app menu)."
+echo "While a game runs you can't click in opentrack, the game takes all clicks."
+echo
 echo "opentrack updates itself automatically, and the icuuc.dll fix is re-applied after every update."
 echo "If anything breaks, just run this script again."
