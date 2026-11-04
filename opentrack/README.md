@@ -83,9 +83,12 @@ Do it beforehand, with the game closed:
 4. Click **Options** → tab **Game detection** → tick *Start profiles from game executable names in this
    list* → click **+** → enter the game's `.exe` name (opentrack Setup tells you which) and pick your
    profile. This makes tracking **start by itself** whenever the game runs.
+   Some games start through a small launcher, then it's the real game's `.exe`, not the one Steam
+   starts (Farming Simulator 25: `FarmingSimulator2025Game.exe`). opentrack Setup shows the right one.
 5. Press **Start** to test it, then close opentrack.
 
-If the game is missing in the list, start it once from Steam, quit it, and open opentrack Setup again.
+If the game is missing in the list, or opentrack Setup doesn't show the `.exe` name, start the game once
+from Steam, quit it, and open opentrack Setup again.
 
 Now just play: opentrack starts together with the game (in Game Mode it stays hidden behind the game)
 and begins tracking on its own. The first start of each game takes a little longer because a start
@@ -94,6 +97,11 @@ script is created for it.
 > **Don't touch the opentrack window with the touchscreen!** opentrack closes immediately when you tap it
 > (a bug in Proton, it doesn't support touch input for opentrack). Use the **trackpad** (R2 = click) or a
 > mouse. If it happened, just start opentrack Setup (or the game) again.
+
+### Tracking doesn't register in the game (Farming Simulator 25 / LS25)
+
+If opentrack tracks your movements in its window, but the game does not react, see our step-by-step
+troubleshooting guide: **[Troubleshooting guide (German)](fehlersuche.md)**.
 
 ### opentrack doesn't start sometimes
 
@@ -149,7 +157,10 @@ An `icuuc.dll` you may have copied into a game's Proton prefix by hand can stay.
 4. Installs the latest opentrack-launcher and patches it so that it:
    - puts `icuuc.dll` next to `opentrack.exe` after every install/update (matching 32/64 bit),
    - uses the bundled 7-Zip if needed,
-   - no longer crashes (and stops the game from starting) when GitHub can't be reached.
+   - no longer crashes (and stops the game from starting) when GitHub can't be reached,
+   - keeps opentrack running for games that start through a small launcher that quits right away
+     (Farming Simulator: `FarmingSimulator2025.exe` → `x64\FarmingSimulator2025Game.exe`). Without this,
+     the per-game start script closes opentrack as soon as the launcher quits.
 5. Installs **opentrack Setup** (desktop icon + app menu). It opens opentrack without the game, in that
    game's Proton prefix (where opentrack keeps its settings), using the same Proton the game last ran with.
 6. Downloads the latest opentrack and checks that `icuuc.dll` is in place.
@@ -233,9 +244,13 @@ Spiel einrichten. Das passiert vorher, bei geschlossenem Spiel:
 4. Auf **Options** klicken → Reiter **Game detection** → Haken bei *Start profiles from game executable
    names in this list* → auf **+** klicken → den `.exe`-Namen des Spiels eintragen (opentrack Setup sagt
    dir welchen) und dein Profil wählen. Dadurch **startet das Tracking von selbst**, sobald das Spiel läuft.
+   Manche Spiele starten über einen kleinen Starter, dann ist es die `.exe` des eigentlichen Spiels, nicht
+   die, die Steam startet (Landwirtschafts-Simulator 25: `FarmingSimulator2025Game.exe`). opentrack Setup
+   zeigt dir die richtige an.
 5. Mit **Start** testen, danach opentrack schließen.
 
-Fehlt das Spiel in der Liste, starte es einmal über Steam, beende es und öffne opentrack Setup nochmal.
+Fehlt das Spiel in der Liste oder zeigt opentrack Setup keinen `.exe`-Namen an, starte das Spiel einmal über
+Steam, beende es und öffne opentrack Setup nochmal.
 
 Jetzt einfach spielen: opentrack startet zusammen mit dem Spiel (im Spielmodus bleibt es hinter dem Spiel
 versteckt) und beginnt von selbst mit dem Tracking. Der erste Start eines Spiels dauert etwas länger, weil
@@ -245,6 +260,10 @@ dafür ein Startskript angelegt wird.
 > darauf tippt (ein Fehler in Proton, das Touch-Eingaben für opentrack nicht unterstützt). Das **Trackpad**
 > benutzen (R2 = Klick) oder eine Maus. Ist es passiert, opentrack Setup (oder das Spiel) einfach nochmal
 > starten.
+
+### Tracking kommt im Spiel nicht an (Landwirtschafts-Simulator 25 / LS25)
+
+Wenn sich der Oktopus im opentrack-Fenster bewegt, das Spiel aber nicht auf Kopfbewegungen reagiert, hilft unsere Schritt-für-Schritt-Anleitung: **[Fehlersuche (Deutsch)](fehlersuche.md)**.
 
 ### opentrack startet manchmal nicht
 
@@ -303,7 +322,10 @@ Sie schadet nicht.
 4. Installiert den neuesten opentrack-launcher und passt ihn so an, dass er:
    - nach jeder Installation/jedem Update `icuuc.dll` neben `opentrack.exe` legt (passend für 32/64 Bit),
    - bei Bedarf das mitgelieferte 7-Zip benutzt,
-   - nicht mehr abstürzt (und damit den Spielstart verhindert), wenn GitHub nicht erreichbar ist.
+   - nicht mehr abstürzt (und damit den Spielstart verhindert), wenn GitHub nicht erreichbar ist,
+   - opentrack bei Spielen weiterlaufen lässt, die über einen kleinen Starter starten, der sich gleich wieder
+     beendet (Landwirtschafts-Simulator: `FarmingSimulator2025.exe` → `x64\FarmingSimulator2025Game.exe`).
+     Ohne das schließt das Startskript des Spiels opentrack, sobald sich der Starter beendet.
 5. Installiert **opentrack Setup** (Desktop-Symbol + Startmenü). Es öffnet opentrack ohne das Spiel im
    Proton-Prefix des Spiels (dort speichert opentrack seine Einstellungen), mit dem Proton, mit dem das
    Spiel zuletzt lief.

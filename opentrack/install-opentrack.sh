@@ -12,6 +12,8 @@
 #        https://github.com/markx86/opentrack-launcher/issues/14)
 #      - can use a bundled 7-Zip if the system has none
 #      - doesn't crash (and take the game with it) when GitHub is unreachable
+#      - keeps opentrack running for games that start through a small launcher
+#        (Farming Simulator: FarmingSimulator2025.exe -> x64/FarmingSimulator2025Game.exe)
 #   3. Downloads the latest opentrack right away and checks icuuc.dll is in place.
 #
 # Usage (in Desktop Mode, open Konsole):
@@ -195,11 +197,45 @@ def getopentrack():
     fixicuuc()
 '''
 
+WAITFORGAME = '''# Some games start through a small launcher that quits as soon as the real game runs
+# (Farming Simulator: FarmingSimulator2025.exe -> x64/FarmingSimulator2025Game.exe).
+# "start /wait" only waits for the launcher, so the .bat would close opentrack right away.
+# For those games, also wait until the real game has exited.
+def realgameexe(appexec):
+    x64 = join(dirname(appexec), "x64")
+    if not isdir(x64):
+        return None
+    wanted = splitext(basename(appexec))[0].lower() + "game.exe"
+    return next((name for name in listdir(x64) if name.lower() == wanted), None)
+
+def waitforgame(appexec):
+    game = realgameexe(appexec)
+    if not game:
+        return []
+    info("game starts through a launcher, also waiting for " + game + "...")
+    # CSV, because tasklist's table cuts names after 25 characters (Wine's find has no /I)
+    return [
+        ":waitgame\\r\\n",
+        "ping -n 3 127.0.0.1 >nul\\r\\n",
+        "tasklist /FO CSV /NH | findstr /I /L /C:\\"" + game + "\\" >nul && goto waitgame\\r\\n",
+    ]
+
+def getlaunchscript(appid, opentrackexec):
+'''
+
 patches = [
     ("#!/usr/bin/env python3\n",
-     "#!/usr/bin/env python3\n# Patched by install-opentrack.sh (icuuc.dll fix, bundled 7-Zip fallback, offline fix)\n"),
+     "#!/usr/bin/env python3\n# Patched by install-opentrack.sh (icuuc.dll fix, bundled 7-Zip fallback, offline fix, launcher-game wait)\n"),
+    ("from os.path import join, isfile, isdir, abspath\n",
+     "from os.path import join, isfile, isdir, abspath, basename, dirname, splitext\n"),
+    ("from os import makedirs, mkdir, environ, remove\n",
+     "from os import makedirs, mkdir, environ, remove, listdir\n"),
     ("from shutil import which, rmtree\n",
      "from shutil import which, rmtree, copyfile\n"),
+    ("def getlaunchscript(appid, opentrackexec):\n",
+     WAITFORGAME),
+    (r' + appargs + "\r\n",' + "\n",
+     r' + appargs + "\r\n",' + "\n                *waitforgame(appexec),\n"),
     # upstream bug: NameError when GitHub can't be reached, which kills the game launch
     ("    except URLError:\n        error(msg)(",
      "    except URLError as e:\n        error("),
@@ -284,11 +320,13 @@ def findapp(appid):
     return None, None
 
 def gameexe(appid):
-    # the per-game .bat written by opentrack-launcher contains the game's .exe
+    # the per-game .bat written by opentrack-launcher contains the game's .exe; if the game starts
+    # through a launcher, the .bat also waits for the real game .exe, which is what game detection needs
     bat = join(LAUNCHERHOME, "scripts", appid + ".bat")
     if isfile(bat):
         with open(bat, errors="replace") as f:
-            m = re.search(r'start /wait "" "([^"]+)"', f.read())
+            text = f.read()
+        m = re.search(r'findstr /I /L /C:"([^"]+)"', text) or re.search(r'start /wait "" "([^"]+)"', text)
         if m:
             return m.group(1).split("\\")[-1]
     return None
